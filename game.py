@@ -53,23 +53,37 @@ def printMaze(maze):
     for row in newMaze[:-1]:
         print(row)
 
-def printMaze(maze):
+def printKnownMaze(maze,known,next):
     newMaze=[]
     for y,row in enumerate(maze):
         string=""
         lowerString=""
         for x,column in enumerate(row):
-            if [x,y]==plyr.pos:
-                string+="K"
+            if [x,y] in known:
+                if [x,y]==plyr.pos:
+                    string+="K"
+                else:
+                    string+="+"
+                if column.walls[1]==False:
+                    string+="---"
+                else:
+                    string+="   "
+                if column.walls[3]==False:
+                    lowerString+="|   "
+                else:
+                    lowerString+="    "
+            elif [x,y] in next:
+                string+="."
+                if column.walls[1]==False:
+                    string+="---"
+                else:
+                    string+="   "
+                if column.walls[3]==False:
+                    lowerString+="|   "
+                else:
+                    lowerString+="    "
             else:
-                string+="+"
-            if column.walls[1]==False:
-                string+="---"
-            else:
-                string+="   "
-            if column.walls[3]==False:
-                lowerString+="|   "
-            else:
+                string+=".   "
                 lowerString+="    "
         newMaze.append(string)
         newMaze.append(lowerString)
@@ -184,8 +198,10 @@ Our hero stands at the entrance, ready to conquer!
             print(plyr.name,"enters the dungeon, sights set on victory.\n")
         else:
             print(plyr.name,"enters the dungeon, feeling fresh and ready to battle.\n")
-        mazeSize=10
+        mazeSize=5
         maze=genMaze(mazeSize)
+        known=[]
+        next=[]
         print("To move, type in l-left, r-right, u-up, d-down")
         while playing:
             dirs=""
@@ -202,7 +218,12 @@ Our hero stands at the entrance, ready to conquer!
             if not maze[plyr.pos[1]][plyr.pos[0]].walls[3]:
                 dirs+=" down,"
                 validDir[3]=True
-            printMaze(maze)
+            known.append([plyr.pos[0],plyr.pos[1]])
+            if validDir[0]:
+                next.append([plyr.pos[0]-1,plyr.pos[1]])
+            if validDir[2]:
+                next.append([plyr.pos[0],plyr.pos[1]-1])
+            printKnownMaze(maze,known,next)
             print("You can move"+dirs[:-1]+".")
             inputting=True
             while inputting:
