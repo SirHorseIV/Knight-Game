@@ -1,17 +1,16 @@
 import random
 
 class player:
-    def __init__(self,name,health,pos,dam=10):
+    def __init__(self,name,health,pos,map=False,dam=10):
         self.name=name
         self.health=health
         self.dam=dam
         self.pos=pos
-        self.map=False
+        self.map=map
 
 class cell:
-    def __init__(self):
-        self.used=False
-        self.walls=[True]*4
+    def __init__(self,walls):
+        self.walls=walls
 
 class enemy:
     def __init__(self,name,health,dam):
@@ -38,10 +37,10 @@ def battle(plyr,enemy):
             if enemy.health<=0:
                 print("You killed "+enemy.name+"!\n")
                 drop=random.randint(1,10)
-                if drop==1:
+                if drop<3:
                     plyr.map=True
                     print("What's this? The enemy dropped a map!")
-                elif 1<drop<3:
+                elif 2<drop<4:
                     plyr.health+=15
                     print("What's this? The enemy dropped a health potion!")
                     print("You drank it, restoring some health")
@@ -51,11 +50,8 @@ def battle(plyr,enemy):
             plyr.health-=dam
             print(enemy.name,"dealt",str(dam),"damage!")
             if plyr.health<=0:
-                print("You died.")
-                battling=False
-                playing=False
-                game=False
-                menu=True
+                print("You died.\n")
+                break
             elif plyr.health<=20:
                 print("You start to feel weary.")
         elif choice=="r":
@@ -70,11 +66,8 @@ def battle(plyr,enemy):
                 plyr.health-=dam
                 print(enemy.name,"dealt",str(dam),"damage!")
                 if plyr.health<=0:
-                    print("You died.")
-                    battling=False
-                    playing=False
-                    game=False
-                    menu=True
+                    print("You died.\n")
+                    break
                 elif plyr.health<=20:
                     print("You are feeling weary from battle.")
         else:
@@ -97,7 +90,7 @@ def dirMoved(pos,newPos):
     else:
         return 1
 
-def printMaze(maze):
+def printMaze(maze,bossRoom):
     newMaze=[]
     for y,row in enumerate(maze):
         string=""
@@ -105,6 +98,8 @@ def printMaze(maze):
         for x,column in enumerate(row):
             if [x,y]==plyr.pos:
                 string+="K"
+            elif [y,x]==bossRoom:
+                string+="B"
             else:
                 string+="+"
             if column.walls[1]==False:
@@ -129,6 +124,8 @@ def printKnownMaze(maze,known,next):
             if [x,y] in known:
                 if [x,y]==plyr.pos:
                     string+="K"
+                elif [y,x]==bossRoom:
+                    string+="B"
                 else:
                     string+="+"
                 if column.walls[1]==False:
@@ -157,15 +154,16 @@ def printKnownMaze(maze,known,next):
     for row in newMaze[:-1]:
         print(row)
 
-# Depth First Search Maze Generation Algorithm
+# Randomised Depth First Search Maze Generation Algorithm
 def genMaze(mazeSize):
     maze=[]
     for row in range(mazeSize):
         maze.append([])
         for column in range(mazeSize):
-            maze[row].append(cell())
+            maze[row].append(cell([True]*4))
     stack=[]
     y,x=0,0
+    max=len(stack)
     while generating(maze):
         valid=[]
         if x==0:
@@ -216,10 +214,71 @@ def genMaze(mazeSize):
             maze[curCell[0]][curCell[1]].walls[dirMoved(curCell,[y,x])]=False
             y,x=curCell[0],curCell[1]
             stack.append(curCell)
+            if len(stack)>max:
+                max=len(stack)
+                bossRoom=list(curCell)
         else:
             stack.pop()
             y,x=stack[-1][0],stack[-1][1]
-    return maze
+    return maze,bossRoom
+
+def readSave():
+    with open("save.txt","r") as save:
+        file=save.read()
+    file=file.split(",")
+    if file[4]=="True":
+        map=True
+    else:
+        map=False
+    plyr=player(file[0],int(file[1]),[int(file[2]),int(file[3])],map)
+    maze=file[5]
+    bossRoom=[int(file[6]),int(file[7])]
+    mazeSize=(round(len(maze)/4))**0.5
+    newMaze=[]
+    for i in range(0,len(maze),4):
+        newMaze.append(maze[i:i+4])
+    maze=newMaze
+    newMaze=[]
+    for i,c in enumerate(maze):
+        walls=[]
+        for b in c:
+            if b=="0":
+                walls.append(False)
+            else:
+                walls.append(True)
+        maze[i]=walls
+    for i,c in enumerate(maze):
+        if i%mazeSize==0:
+            newMaze.append([])
+        newMaze[-1].append(cell(c))
+    maze=newMaze
+    known=file[8]
+    newKnown=[]
+    for i in range(0,len(known),2):
+        newKnown.append(known[i:i+2])
+    known=[]
+    for c in newKnown:
+        known.append([int(c[0]),int(c[1])])
+    return plyr,maze,bossRoom,known
+
+def writeSave(plyr,maze,bossRoom,known):
+    mazeSize=len(maze)
+    mazeString=""
+    for row in maze:
+        for column in row:
+            for wall in column.walls:
+                if wall:
+                    mazeString+="1"
+                else:
+                    mazeString+="0"
+    knownString=""
+    for c in known:
+        for coord in c:
+            knownString+=str(coord)
+    with open("save.txt","w") as save:
+        save.write(str(plyr.name)+","+str(plyr.health)+","+str(plyr.pos[0])+","+
+        str(plyr.pos[1])+","+str(plyr.map)+","+mazeString+","+str(bossRoom[0])+","+
+        str(bossRoom[1])+","+knownString)
 
 print("""
  _   __      _       _     _   _          ___
@@ -246,30 +305,43 @@ while running:
                 menu=False
                 inputting=False
                 game=True
+                newSave=True
+                break
+            elif choice=="2":
+                #try:
+                plyr,maze,bossRoom,known=readSave()
+                #except:
+                    #print("Save file does not exist")
+                menu=False
+                inputting=False
+                game=True
+                newSave=False
                 break
             else:
                 print("Invalid choice")
     elif game:
         playing=True
-        print("""
+        next=[]
+        mazeSize=7
+        if newSave:
+            print("""
 The beautiful princess has been stolen from the royal palace.
 A plentiful reward is offered to anyone who can save her,
 But standing between our hero and the princess,
 Is a deadly dungeon, brimming with traps and monsters.
 Our hero stands at the entrance, ready to conquer!
 Remember, enemies may be carrying useful items.
-        """)
-        plyr=player(input("Who is the hero of this story? >>> ").strip(),random.randint(50,100),[0,0])
-        if plyr.health<67:
-            print(plyr.name,"enters the dungeon, feeling a little worn out.\n")
-        elif plyr.health<84:
-            print(plyr.name,"enters the dungeon, sights set on victory.\n")
-        else:
-            print(plyr.name,"enters the dungeon, feeling fresh and ready to battle.\n")
-        mazeSize=7
-        maze=genMaze(mazeSize)
-        known=[]
-        next=[]
+            """)
+            plyr=player(input("Who is the hero of this story? >>> ").strip(),random.randint(50,100),[0,0])
+            if plyr.health<67:
+                print(plyr.name,"enters the dungeon, feeling a little worn out.\n")
+            elif plyr.health<84:
+                print(plyr.name,"enters the dungeon, sights set on victory.\n")
+            else:
+                print(plyr.name,"enters the dungeon, feeling fresh and ready to battle.\n")
+            maze,bossRoom=genMaze(mazeSize)
+            known=[]
+            newSave=False
         print("To move, type in l-left, r-right, u-up, d-down")
         while playing:
             dirs=""
@@ -292,7 +364,7 @@ Remember, enemies may be carrying useful items.
             if validDir[2]:
                 next.append([plyr.pos[0],plyr.pos[1]-1])
             if plyr.map:
-                printMaze(maze)
+                printMaze(maze,bossRoom)
             else:
                 printKnownMaze(maze,known,next)
             print("You can move"+dirs[:-1]+".")
@@ -313,5 +385,23 @@ Remember, enemies may be carrying useful items.
                     inputting=False
                 else:
                     print("Invalid choice")
-            if random.randint(1,5)==5:
+            writeSave(plyr,maze,bossRoom,known)
+            if plyr.pos==bossRoom[::-1]:
+                battle(plyr,enemy("goblin king",40,9))
+                if plyr.health>0:
+                    print("""
+You return to the palace, with the princess.
+Awaiting you are the riches of the kingdom!
+You Win!
+""")
+                playing=False
+                game=False
+                menu=True
+                break
+            elif random.randint(1,5)==5:
                 battle(plyr,enemy("goblin",random.randint(7,25),random.randint(4,8)))
+                if plyr.health<=0:
+                    playing=False
+                    game=False
+                    menu=True
+                    break
