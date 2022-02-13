@@ -1,17 +1,84 @@
 import random
 
 class player:
-    def __init__(self,name,health,pos,exp=0):
+    def __init__(self,name,health,pos,dam=10):
         self.name=name
         self.health=health
-        self.exp=exp
+        self.dam=dam
         self.pos=pos
+        self.map=False
 
 class cell:
     def __init__(self):
         self.used=False
         self.walls=[True]*4
-        self.contain=[]
+
+class enemy:
+    def __init__(self,name,health,dam):
+        self.name=name
+        self.health=health
+        self.dam=dam
+
+def battle(plyr,enemy):
+    print("\nA",enemy.name,"appeared!")
+    if enemy.health>20:
+        print("It looks threatening and dangerous, and ready to attack!")
+    elif enemy.health>10:
+        print("It stares you down, assessing the situation.")
+    else:
+        print("It looks weak, an easy target.")
+    battling=True
+    print("f-fight, r-run")
+    while battling:
+        choice=input("\nWhat do you want to do? >>> ")
+        if choice=="f":
+            dam=plyr.dam-2+random.randint(0,4)
+            enemy.health-=dam
+            print("You dealt",str(dam),"damage!")
+            if enemy.health<=0:
+                print("You killed "+enemy.name+"!\n")
+                drop=random.randint(1,10)
+                if drop==1:
+                    plyr.map=True
+                    print("What's this? The enemy dropped a map!")
+                elif 1<drop<3:
+                    plyr.health+=15
+                    print("What's this? The enemy dropped a health potion!")
+                    print("You drank it, restoring some health")
+                battling=False
+                break
+            dam=enemy.dam-2+random.randint(0,4)
+            plyr.health-=dam
+            print(enemy.name,"dealt",str(dam),"damage!")
+            if plyr.health<=0:
+                print("You died.")
+                battling=False
+                playing=False
+                game=False
+                menu=True
+            elif plyr.health<=20:
+                print("You start to feel weary.")
+        elif choice=="r":
+            run=random.randint(1,2)
+            if run==1:
+                print("You got away!")
+                battling=False
+                break
+            else:
+                print(enemy.name,"blocks the way.")
+                dam=enemy.dam-2+random.randint(0,4)
+                plyr.health-=dam
+                print(enemy.name,"dealt",str(dam),"damage!")
+                if plyr.health<=0:
+                    print("You died.")
+                    battling=False
+                    playing=False
+                    game=False
+                    menu=True
+                elif plyr.health<=20:
+                    print("You are feeling weary from battle.")
+        else:
+            print("Invalid choice")
 
 def generating(maze):
     for row in maze:
@@ -74,11 +141,11 @@ def printKnownMaze(maze,known,next):
                     lowerString+="    "
             elif [x,y] in next:
                 string+="."
-                if column.walls[1]==False:
+                if column.walls[1]==False and [x,y+1]!=plyr.pos:
                     string+="---"
                 else:
                     string+="   "
-                if column.walls[3]==False:
+                if column.walls[3]==False and [x+1,y]!=plyr.pos:
                     lowerString+="|   "
                 else:
                     lowerString+="    "
@@ -190,6 +257,7 @@ A plentiful reward is offered to anyone who can save her,
 But standing between our hero and the princess,
 Is a deadly dungeon, brimming with traps and monsters.
 Our hero stands at the entrance, ready to conquer!
+Remember, enemies may be carrying useful items.
         """)
         plyr=player(input("Who is the hero of this story? >>> ").strip(),random.randint(50,100),[0,0])
         if plyr.health<67:
@@ -198,7 +266,7 @@ Our hero stands at the entrance, ready to conquer!
             print(plyr.name,"enters the dungeon, sights set on victory.\n")
         else:
             print(plyr.name,"enters the dungeon, feeling fresh and ready to battle.\n")
-        mazeSize=5
+        mazeSize=7
         maze=genMaze(mazeSize)
         known=[]
         next=[]
@@ -223,7 +291,10 @@ Our hero stands at the entrance, ready to conquer!
                 next.append([plyr.pos[0]-1,plyr.pos[1]])
             if validDir[2]:
                 next.append([plyr.pos[0],plyr.pos[1]-1])
-            printKnownMaze(maze,known,next)
+            if plyr.map:
+                printMaze(maze)
+            else:
+                printKnownMaze(maze,known,next)
             print("You can move"+dirs[:-1]+".")
             inputting=True
             while inputting:
@@ -242,3 +313,5 @@ Our hero stands at the entrance, ready to conquer!
                     inputting=False
                 else:
                     print("Invalid choice")
+            if random.randint(1,5)==5:
+                battle(plyr,enemy("goblin",random.randint(7,25),random.randint(4,8)))
