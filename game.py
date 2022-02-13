@@ -308,15 +308,15 @@ while running:
                 newSave=True
                 break
             elif choice=="2":
-                #try:
-                plyr,maze,bossRoom,known=readSave()
-                #except:
-                    #print("Save file does not exist")
-                menu=False
-                inputting=False
-                game=True
-                newSave=False
-                break
+                try:
+                    plyr,maze,bossRoom,known=readSave()
+                    menu=False
+                    inputting=False
+                    game=True
+                    newSave=False
+                    break
+                except:
+                    print("Save file does not exist")
             else:
                 print("Invalid choice")
     elif game:
